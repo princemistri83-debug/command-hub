@@ -31,13 +31,6 @@ st.markdown("""
         background-color: #38bdf8;
         color: #0f172a;
     }
-    .call-box {
-        background-color: #1e293b;
-        border-left: 5px solid #ef4444;
-        padding: 15px;
-        border-radius: 10px;
-        margin-top: 10px;
-    }
     .transcript-user {
         background-color: #0284c7;
         color: white;
@@ -55,10 +48,20 @@ st.markdown("""
         text-align: left;
         border-left: 3px solid #38bdf8;
     }
+    .quote-box {
+        background-color: #1e293b;
+        border: 1px dashed #38bdf8;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        font-style: italic;
+        color: #38bdf8;
+        margin-top: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# સેસન સ્ટેટ (નોટ્સ અને કોલ હિસ્ટ્રી સેવ રાખવા માટે)
+# સેસન સ્ટેટ
 if 'notes' not in st.session_state:
     st.session_state.notes = []
 if 'call_history' not in st.session_state:
@@ -71,7 +74,7 @@ if 'contacts' not in st.session_state:
         "અજાણ્યો નંબર (+91 99999 88888)": "Eren Yeager"
     }
 
-# બ્રાઉઝર વોઇસ (Text-to-Speech) ફંક્શન
+# ઓટોમેટિક બ્રાઉઝર વોઇસ (TTS) ફંક્શન
 def speak_voice(text, pitch=1.0, rate=1.0):
     clean_text = text.replace('"', '').replace("'", "")
     js_code = f"""
@@ -85,7 +88,7 @@ def speak_voice(text, pitch=1.0, rate=1.0):
     """
     components.html(js_code, height=0)
 
-# કેરેક્ટર ડેટાબેઝ (પર્સનાલિટી, વોઇસ પિચ અને ડાયલોગ્સ)
+# કેરેક્ટર ડેટાબેઝ
 CHARACTERS = {
     "Erwin Smith": {
         "pitch": 0.75, "rate": 0.95,
@@ -94,7 +97,8 @@ CHARACTERS = {
             "We must look beyond the walls of this problem. Give your heart and move forward!",
             "A good commander always has a backup plan. Tell me your next move.",
             "Sacrifice is necessary for victory. Stay focused on your goal."
-        ]
+        ],
+        "quotes": ["Give your heart! (Shinzo wo Sasageyo)", "If we don't fight, we can't win."]
     },
     "Floch Forster": {
         "pitch": 1.05, "rate": 1.1,
@@ -103,7 +107,8 @@ CHARACTERS = {
             "We don't have time for hesitation. Crush the obstacles in front of you!",
             "I will do whatever it takes to ensure our survival and success.",
             "If you don't fight, you can't win. Tell me what needs to be done."
-        ]
+        ],
+        "quotes": ["Only the devils can save Eldia!", "Someone has to become a monster."]
     },
     "Eren Yeager": {
         "pitch": 0.85, "rate": 1.0,
@@ -112,7 +117,8 @@ CHARACTERS = {
             "Because I was born into this world, I am free to choose my own path.",
             "Stop waiting for someone else to save you. Take control right now.",
             "Tatakae. Fight. That is the only answer."
-        ]
+        ],
+        "quotes": ["I will keep moving forward, until my enemies are destroyed.", "Tatakae! Fight!"]
     },
     "Johan Liebert": {
         "pitch": 0.90, "rate": 0.85,
@@ -121,7 +127,8 @@ CHARACTERS = {
             "Look at me... Look at how large the monster inside me has become.",
             "People are so easy to manipulate when you know what they fear most.",
             "Everything is going exactly according to the scenario I wrote."
-        ]
+        ],
+        "quotes": ["The only thing all humans are equal in... is death.", "Do you see the monster inside?"]
     },
     "Orochimaru": {
         "pitch": 0.65, "rate": 0.90,
@@ -130,7 +137,8 @@ CHARACTERS = {
             "True power comes from knowing all the secrets of this world.",
             "Humans are merely fragile vessels, yet their ambition is quite entertaining.",
             "Tell me what you desire, and perhaps I shall grant you forbidden knowledge."
-        ]
+        ],
+        "quotes": ["Everything in this world is meaningless unless you master it.", "Kukuku... fascinating."]
     },
     "Askeladd": {
         "pitch": 0.80, "rate": 1.0,
@@ -139,40 +147,32 @@ CHARACTERS = {
             "Stop whining and use your head! A real warrior survives by wit, not just strength.",
             "Everyone is a slave to something. Make sure you are the one holding the chains.",
             "Not bad. Now show me how you actually plan to pull this off."
-        ]
+        ],
+        "quotes": ["Everyone's a slave to something.", "A real warrior needs no sword."]
     }
 }
 
 st.title("⚡ J.A.R.V.I.S. Command Hub")
-st.markdown("<p style='text-align:center; color:#94a3b8;'>સ્માર્ટ AI આસિસ્ટન્ટ & એનિમે વોઇસ કોલ સિમ્યુલેટર</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94a3b8;'>એનિમે વોઇસ કોલ સિમ્યુલેટર & સ્માર્ટ નોટ્સ હબ</p>", unsafe_allow_html=True)
 
-# બે મુખ્ય ટેબ: ૧. સ્માર્ટ કમાન્ડ્સ, ૨. એનિમે વોઇસ કોલ
-tab1, tab2 = st.tabs(["📞 Anime Voice Call", "⚡ સ્માર્ટ કમાન્ડ્સ"])
+tab1, tab2, tab3 = st.tabs(["📞 Anime Voice Call", "📜 Anime Quote Vault", "📝 Smart Notes"])
 
 # ==========================================
-# TAB 1: ANIME VOICE CALL & LIVE SUBTITLES
+# TAB 1: ANIME VOICE CALL (AUTO SPEAK MODE)
 # ==========================================
 with tab1:
-    st.subheader("📲 કોન્ટેક્ટ અને એનિમે કેરેક્ટર સેટઅપ")
+    st.subheader("📲 એનિમે કેરેક્ટર ઓટો-કોલ સિમ્યુલેટર")
     
-    # નવો નંબર અને કેરેક્ટર લિંક કરવા માટે
-    with st.expander("➕ નવો કોન્ટેક્ટ નંબર ઉમેરો / બદલો"):
-        new_name_num = st.text_input("કોન્ટેક્ટ નામ અને નંબર (દા.ત. રાજ +91 9825012345):")
-        assigned_char = st.selectbox("આ નંબર માટે કયું કેરેક્ટર સેટ કરવું છે?", list(CHARACTERS.keys()), key="new_assign")
-        if st.button("કોન્ટેક્ટ સેવ કરો"):
-            if new_name_num:
-                st.session_state.contacts[new_name_num] = assigned_char
-                st.success(f"સેવ થઈ ગયું: {new_name_num} -> {assigned_char}")
-
-    # કોલ સિલેક્શન
     selected_contact = st.selectbox("કોનો કોલ આવી રહ્યો છે / કોને કોલ કરવો છે?", list(st.session_state.contacts.keys()))
     default_char = st.session_state.contacts[selected_contact]
     
     active_character = st.selectbox(
-        "એક્ટિવ એનિમે વોઇસ કેરેક્ટર (તમે બદલી પણ શકો છો):", 
+        "એક્ટિવ એનિમે કેરેક્ટર:", 
         list(CHARACTERS.keys()), 
         index=list(CHARACTERS.keys()).index(default_char)
     )
+
+    st.markdown("🎵 **Background Vibe:** `Epic OST Active 🎧`")
 
     col_c1, col_c2 = st.columns(2)
     with col_c1:
@@ -185,20 +185,21 @@ with tab1:
     with col_c2:
         if st.button("🔴 કોલ કટ કરો (Clear Log)"):
             st.session_state.call_history = []
-            st.info("કોલ ડિસ્કનેક્ટ થયો અને સબટાઇટલ લોગ ક્લિયર થયો.")
+            st.info("કોલ ડિસ્કનેક્ટ થયો.")
 
-    # લાઈવ વાતચીત / સબટાઇટલ ઇનપુટ
     st.markdown("---")
-    user_speech = st.text_input("🎙️ તમે કોલમાં શું બોલો છો? (અહીં લખો, સામે કેરેક્ટર વોઇસમાં જવાબ આપશે):")
-    if st.button("🗣️ બોલો (Send Voice Reply)"):
-        if user_speech:
+    
+    user_speech = st.text_input("🎙️ તમે કોલમાં જે લખશો તે સામે કેરેક્ટર ઓટોમેટિક બોલશે (ટાઇપ કરીને એન્ટર દબાવો):", key="user_input_box")
+
+    if user_speech:
+        last_msg = st.session_state.call_history[-1][2] if st.session_state.call_history else ""
+        if last_msg != user_speech:
             st.session_state.call_history.append(("User", "તમે (You)", user_speech))
             char_data = CHARACTERS[active_character]
             ai_reply = random.choice(char_data["replies"])
             st.session_state.call_history.append(("AI", active_character, ai_reply))
             speak_voice(ai_reply, char_data["pitch"], char_data["rate"])
 
-    # લાઈવ સબટાઇટલ્સ સ્ક્રીન
     if st.session_state.call_history:
         st.markdown("### 📝 લાઈવ કોલ સબટાઇટલ્સ (Live Transcript)")
         for sender, name, msg in st.session_state.call_history:
@@ -208,26 +209,26 @@ with tab1:
                 st.markdown(f"<div class='transcript-ai'><b>🎭 {name}:</b> {msg}</div>", unsafe_allow_html=True)
 
 # ==========================================
-# TAB 2: J.A.R.V.I.S. SMART COMMANDS
+# TAB 2: ANIME QUOTE VAULT
 # ==========================================
 with tab2:
-    st.subheader("⚡ ક્વિક સ્માર્ટ કમાન્ડ્સ")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🕒 સમય અને તારીખ"):
-            now = datetime.now().strftime("%d-%m-%Y | %I:%M:%S %p")
-            st.success(f"અત્યારનો સમય: {now}")
-    with c2:
-        if st.button("📢 શોપ ઓફર બનાવો"):
-            offers = [
-                "🔥 MEGA SALE: આજે દરેક ઓર્ડર પર મેળવો Flat 20% OFF!",
-                "🎁 SPECIAL COMBO: 2 પ્રોડક્ટ ખરીદો અને 1 સરપ્રાઇઝ ગિફ્ટ ફ્રી મેળવો!",
-                "⚡ FLASH DEAL: માત્ર આજના દિવસ માટે ફ્રી હોમ ડિલિવરી!"
-            ]
-            st.info(random.choice(offers))
+    st.subheader("📜 એનિમે માસ્ટરમાઇન્ડ કોટ્સ વૉલ્ટ")
+    quote_char = st.selectbox("કેરેક્ટર પસંદ કરો:", list(CHARACTERS.keys()), key="quote_char_select")
+    
+    if st.button("✨ પાવરફુલ કોટ જનરેટ કરો"):
+        selected_quotes = CHARACTERS[quote_char]["quotes"]
+        chosen_quote = random.choice(selected_quotes)
+        speak_voice(chosen_quote, CHARACTERS[quote_char]["pitch"], CHARACTERS[quote_char]["rate"])
+        st.markdown(f"<div class='quote-box'><b>{quote_char}:</b><br>“{chosen_quote}”</div>", unsafe_allow_html=True)
 
-    cmd = st.text_input("💬 તમારો કમાન્ડ લખો (દા.ત. 'note: દૂધ લાવવું', '250 * 12'):")
-    if st.button("▶️ કમાન્ડ ચલાવો (Execute)"):
+# ==========================================
+# TAB 3: SMART NOTES
+# ==========================================
+with tab3:
+    st.subheader("📝 સ્માર્ટ નોટ્સ અને કેલ્ક્યુલેટર")
+    
+    cmd = st.text_input("💬 નોંધ લખો (દા.ત. 'note: પ્રોજેક્ટ પૂરો કરવો') અથવા ગણતરી કરો (દા.ત. '250 * 12'):")
+    if st.button("▶️ પ્રોસેસ કરો"):
         if cmd.lower().startswith("note:"):
             note_text = cmd[5:].strip()
             st.session_state.notes.append(note_text)
@@ -239,9 +240,9 @@ with tab2:
             except:
                 st.error("ગણતરીમાં ભૂલ છે.")
         else:
-            st.info(f"કમાન્ડ પ્રોસેસ થયો: {cmd}")
+            st.info(f"ઇનપુટ સેવ થયું: {cmd}")
 
     if st.session_state.notes:
-        st.markdown("### 📝 તમારી સ્માર્ટ નોટ્સ")
+        st.markdown("### 📋 તમારી સેવ કરેલી નોટ્સ")
         for idx, n in enumerate(st.session_state.notes, 1):
             st.write(f"{idx}. {n}")
