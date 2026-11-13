@@ -1,159 +1,247 @@
 import streamlit as st
-import datetime
-import time
-import urllib.parse
+import streamlit.components.v1 as components
+from datetime import datetime
+import random
 
-# પેજ સેટઅપ અને સ્માર્ટ ડાર્ક UI
-st.set_page_config(page_title="AI Smart Command Hub", page_icon="🤖", layout="centered")
+# પેજ સેટિંગ્સ
+st.set_page_config(page_title="J.A.R.V.I.S. Command Hub", page_icon="⚡", layout="centered")
 
+# ડાર્ક અને ફ્યુચરિસ્ટિક UI સ્ટાઇલ
 st.markdown("""
     <style>
     .stApp {
-        background-color: #0b0f19;
-        color: #e2e8f0;
+        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+        color: #f8fafc;
     }
-    .command-box {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    h1, h2, h3 {
+        color: #38bdf8 !important;
+        text-align: center;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        background-color: #1e293b;
+        color: #38bdf8;
         border: 1px solid #38bdf8;
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-        margin-bottom: 20px;
+        font-weight: bold;
+        padding: 10px;
+        transition: 0.3s;
     }
-    .status-badge {
+    .stButton>button:hover {
+        background-color: #38bdf8;
+        color: #0f172a;
+    }
+    .call-box {
+        background-color: #1e293b;
+        border-left: 5px solid #ef4444;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 10px;
+    }
+    .transcript-user {
         background-color: #0284c7;
         color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin: 5px 0;
+        text-align: right;
+    }
+    .transcript-ai {
+        background-color: #334155;
+        color: #f8fafc;
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin: 5px 0;
+        text-align: left;
+        border-left: 3px solid #38bdf8;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# હેડર
-st.markdown("<h1 style='text-align: center; color: #38bdf8;'>🤖 J.A.R.V.I.S. Command Hub</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #94a3b8;'>તમારો સ્માર્ટ AI આસિસ્ટન્ટ — કમાન્ડ આપો અને સ્ક્રીન પર ઓટો-એક્શન જુઓ</p>", unsafe_allow_html=True)
-
-# સેસન સ્ટેટ (નોટ્સ અને હિસ્ટ્રી સેવ રાખવા માટે)
-if "notes" not in st.session_state:
+# સેસન સ્ટેટ (નોટ્સ અને કોલ હિસ્ટ્રી સેવ રાખવા માટે)
+if 'notes' not in st.session_state:
     st.session_state.notes = []
-if "logs" not in st.session_state:
-    st.session_state.logs = []
+if 'call_history' not in st.session_state:
+    st.session_state.call_history = []
+if 'contacts' not in st.session_state:
+    st.session_state.contacts = {
+        "મમ્મી / ઘર (+91 98765 00001)": "Erwin Smith",
+        "બેસ્ટ ફ્રેન્ડ (+91 98765 00002)": "Floch Forster",
+        "બિઝનેસ / ઓફિસ (+91 98765 00003)": "Johan Liebert",
+        "અજાણ્યો નંબર (+91 99999 88888)": "Eren Yeager"
+    }
 
-# ક્વિક કમાન્ડ બટન્સ (એક ટચમાં સ્માર્ટ એક્શન)
-st.markdown("### ⚡ ક્વિક સ્માર્ટ કમાન્ડ્સ")
-col1, col2, col3 = st.columns(3)
-quick_cmd = ""
-with col1:
-    if st.button("🕒 સમય અને તારીખ"):
-        quick_cmd = "time"
-with col2:
-    if st.button("📢 શોપ ઓફર બનાવો"):
-        quick_cmd = "shop_offer"
-with col3:
-    if st.button("🚀 ઓટો વર્કફ્લો ચલાવો"):
-        quick_cmd = "workflow"
+# બ્રાઉઝર વોઇસ (Text-to-Speech) ફંક્શન
+def speak_voice(text, pitch=1.0, rate=1.0):
+    clean_text = text.replace('"', '').replace("'", "")
+    js_code = f"""
+    <script>
+        window.speechSynthesis.cancel();
+        var msg = new SpeechSynthesisUtterance("{clean_text}");
+        msg.pitch = {pitch};
+        msg.rate = {rate};
+        window.speechSynthesis.speak(msg);
+    </script>
+    """
+    components.html(js_code, height=0)
 
-# કમાન્ડ ઇનપુટ બોક્સ
-user_cmd = st.text_input("💬 તમારો કમાન્ડ અહીં લખો (દા.ત. 'youtube kholo', 'note: દૂધ લાવવું', '250 * 12', 'search: surat weather'):", value=quick_cmd)
+# કેરેક્ટર ડેટાબેઝ (પર્સનાલિટી, વોઇસ પિચ અને ડાયલોગ્સ)
+CHARACTERS = {
+    "Erwin Smith": {
+        "pitch": 0.75, "rate": 0.95,
+        "greeting": "My soldiers, do not buckle or yield! Tell me, what is the situation on your end?",
+        "replies": [
+            "We must look beyond the walls of this problem. Give your heart and move forward!",
+            "A good commander always has a backup plan. Tell me your next move.",
+            "Sacrifice is necessary for victory. Stay focused on your goal."
+        ]
+    },
+    "Floch Forster": {
+        "pitch": 1.05, "rate": 1.1,
+        "greeting": "Listen carefully! Only a devil can save us now. Why are you calling?",
+        "replies": [
+            "We don't have time for hesitation. Crush the obstacles in front of you!",
+            "I will do whatever it takes to ensure our survival and success.",
+            "If you don't fight, you can't win. Tell me what needs to be done."
+        ]
+    },
+    "Eren Yeager": {
+        "pitch": 0.85, "rate": 1.0,
+        "greeting": "I keep moving forward... until all my enemies are destroyed. Speak.",
+        "replies": [
+            "Because I was born into this world, I am free to choose my own path.",
+            "Stop waiting for someone else to save you. Take control right now.",
+            "Tatakae. Fight. That is the only answer."
+        ]
+    },
+    "Johan Liebert": {
+        "pitch": 0.90, "rate": 0.85,
+        "greeting": "The only thing all humans are equal in is death... Tell me, what is your deepest wish?",
+        "replies": [
+            "Look at me... Look at how large the monster inside me has become.",
+            "People are so easy to manipulate when you know what they fear most.",
+            "Everything is going exactly according to the scenario I wrote."
+        ]
+    },
+    "Orochimaru": {
+        "pitch": 0.65, "rate": 0.90,
+        "greeting": "Kukuku... How fascinating. What brings you to my hideout today?",
+        "replies": [
+            "True power comes from knowing all the secrets of this world.",
+            "Humans are merely fragile vessels, yet their ambition is quite entertaining.",
+            "Tell me what you desire, and perhaps I shall grant you forbidden knowledge."
+        ]
+    },
+    "Askeladd": {
+        "pitch": 0.80, "rate": 1.0,
+        "greeting": "Oi, listen up kid. Better make this quick, my time isn't cheap.",
+        "replies": [
+            "Stop whining and use your head! A real warrior survives by wit, not just strength.",
+            "Everyone is a slave to something. Make sure you are the one holding the chains.",
+            "Not bad. Now show me how you actually plan to pull this off."
+        ]
+    }
+}
 
-if st.button("▶️ કમાન્ડ ચલાવો (Execute)", type="primary", use_container_width=True) or quick_cmd:
-    cmd = user_cmd.strip().lower()
+st.title("⚡ J.A.R.V.I.S. Command Hub")
+st.markdown("<p style='text-align:center; color:#94a3b8;'>સ્માર્ટ AI આસિસ્ટન્ટ & એનિમે વોઇસ કોલ સિમ્યુલેટર</p>", unsafe_allow_html=True)
+
+# બે મુખ્ય ટેબ: ૧. સ્માર્ટ કમાન્ડ્સ, ૨. એનિમે વોઇસ કોલ
+tab1, tab2 = st.tabs(["📞 Anime Voice Call", "⚡ સ્માર્ટ કમાન્ડ્સ"])
+
+# ==========================================
+# TAB 1: ANIME VOICE CALL & LIVE SUBTITLES
+# ==========================================
+with tab1:
+    st.subheader("📲 કોન્ટેક્ટ અને એનિમે કેરેક્ટર સેટઅપ")
     
-    if cmd:
-        with st.spinner("AI કમાન્ડ પ્રોસેસ કરી રહ્યું છે..."):
-            time.sleep(0.6)
-        
-        st.markdown("<div class='command-box'>", unsafe_allow_html=True)
-        st.markdown("<span class='status-badge'>ACTION EXECUTED</span>", unsafe_allow_html=True)
-        
-        # 1. સમય અને તારીખ
-        if "time" in cmd or "સમય" in cmd:
-            now = datetime.datetime.now().strftime("%d-%m-%Y | %I:%M:%S %p")
-            st.success(f"🕒 હાલનો સમય અને તારીખ: **{now}**")
-            st.session_state.logs.append(f"સમય ચેક કર્યો: {now}")
+    # નવો નંબર અને કેરેક્ટર લિંક કરવા માટે
+    with st.expander("➕ નવો કોન્ટેક્ટ નંબર ઉમેરો / બદલો"):
+        new_name_num = st.text_input("કોન્ટેક્ટ નામ અને નંબર (દા.ત. રાજ +91 9825012345):")
+        assigned_char = st.selectbox("આ નંબર માટે કયું કેરેક્ટર સેટ કરવું છે?", list(CHARACTERS.keys()), key="new_assign")
+        if st.button("કોન્ટેક્ટ સેવ કરો"):
+            if new_name_num:
+                st.session_state.contacts[new_name_num] = assigned_char
+                st.success(f"સેવ થઈ ગયું: {new_name_num} -> {assigned_char}")
 
-        # 2. શોપ માટે સ્માર્ટ ઑફર જનરેટર
-        elif "shop_offer" in cmd or "ઓફર" in cmd or "offer" in cmd:
-            offer_text = "🎉 **મેગા ધમાકા ઑફર!** 🎉\nઆજે જ અમારી શોપની મુલાકાત લો અને દરેક ખરીદી પર મેળવો **ખાસ 20% થી 50% સુધીનું ડિસ્કાઉન્ટ!**\n📍 સ્થળ: સુરત | ⏰ મર્યાદિત સમય માટે!"
-            st.info(offer_text)
-            st.code(offer_text.replace("**", ""), language="text")
-            st.session_state.logs.append("શોપ પ્રોમો ઑફર જનરેટ કરી")
+    # કોલ સિલેક્શન
+    selected_contact = st.selectbox("કોનો કોલ આવી રહ્યો છે / કોને કોલ કરવો છે?", list(st.session_state.contacts.keys()))
+    default_char = st.session_state.contacts[selected_contact]
+    
+    active_character = st.selectbox(
+        "એક્ટિવ એનિમે વોઇસ કેરેક્ટર (તમે બદલી પણ શકો છો):", 
+        list(CHARACTERS.keys()), 
+        index=list(CHARACTERS.keys()).index(default_char)
+    )
 
-        # 3. સ્ટેપ-બાય-સ્ટેપ ઓટો વર્કફ્લો (RPA ડેમો)
-        elif "workflow" in cmd or "સ્ટેપ" in cmd:
-            st.write("🔄 **ઓટોમેટિક વર્કફ્લો શરૂ થઈ રહ્યો છે...**")
-            progress = st.progress(0)
-            status_text = st.empty()
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        if st.button("📞 ઇનકમિંગ કોલ ઉપાડો (Start Call)"):
+            char_data = CHARACTERS[active_character]
+            greeting = char_data["greeting"]
+            st.session_state.call_history.append(("AI", active_character, greeting))
+            speak_voice(greeting, char_data["pitch"], char_data["rate"])
             
-            steps = [
-                "Step 1: સિસ્ટમ અને સિક્યોરિટી ચેક થઈ રહી છે...",
-                "Step 2: ડેટાબેઝ કનેક્ટ થઈ રહ્યો છે...",
-                "Step 3: સ્માર્ટ ડેશબોર્ડ તૈયાર થઈ રહ્યું છે...",
-                "✅ બધા સ્ટેપ્સ સફળતાપૂર્વક પૂર્ણ થયા!"
+    with col_c2:
+        if st.button("🔴 કોલ કટ કરો (Clear Log)"):
+            st.session_state.call_history = []
+            st.info("કોલ ડિસ્કનેક્ટ થયો અને સબટાઇટલ લોગ ક્લિયર થયો.")
+
+    # લાઈવ વાતચીત / સબટાઇટલ ઇનપુટ
+    st.markdown("---")
+    user_speech = st.text_input("🎙️ તમે કોલમાં શું બોલો છો? (અહીં લખો, સામે કેરેક્ટર વોઇસમાં જવાબ આપશે):")
+    if st.button("🗣️ બોલો (Send Voice Reply)"):
+        if user_speech:
+            st.session_state.call_history.append(("User", "તમે (You)", user_speech))
+            char_data = CHARACTERS[active_character]
+            ai_reply = random.choice(char_data["replies"])
+            st.session_state.call_history.append(("AI", active_character, ai_reply))
+            speak_voice(ai_reply, char_data["pitch"], char_data["rate"])
+
+    # લાઈવ સબટાઇટલ્સ સ્ક્રીન
+    if st.session_state.call_history:
+        st.markdown("### 📝 લાઈવ કોલ સબટાઇટલ્સ (Live Transcript)")
+        for sender, name, msg in st.session_state.call_history:
+            if sender == "User":
+                st.markdown(f"<div class='transcript-user'><b>{name}:</b> {msg}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='transcript-ai'><b>🎭 {name}:</b> {msg}</div>", unsafe_allow_html=True)
+
+# ==========================================
+# TAB 2: J.A.R.V.I.S. SMART COMMANDS
+# ==========================================
+with tab2:
+    st.subheader("⚡ ક્વિક સ્માર્ટ કમાન્ડ્સ")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🕒 સમય અને તારીખ"):
+            now = datetime.now().strftime("%d-%m-%Y | %I:%M:%S %p")
+            st.success(f"અત્યારનો સમય: {now}")
+    with c2:
+        if st.button("📢 શોપ ઓફર બનાવો"):
+            offers = [
+                "🔥 MEGA SALE: આજે દરેક ઓર્ડર પર મેળવો Flat 20% OFF!",
+                "🎁 SPECIAL COMBO: 2 પ્રોડક્ટ ખરીદો અને 1 સરપ્રાઇઝ ગિફ્ટ ફ્રી મેળવો!",
+                "⚡ FLASH DEAL: માત્ર આજના દિવસ માટે ફ્રી હોમ ડિલિવરી!"
             ]
-            for i, step in enumerate(steps):
-                status_text.markdown(f"**{step}**")
-                progress.progress((i + 1) * 25)
-                time.sleep(0.8)
-            st.balloons()
-            st.session_state.logs.append("ઓટો વર્કફ્લો રન કર્યો")
+            st.info(random.choice(offers))
 
-        # 4. સ્માર્ટ નોટ સેવ કરવી (ઉદાહરણ: note: સાંજે 5 વાગ્યે મીટિંગ)
-        elif cmd.startswith("note:") or cmd.startswith("નોટ:"):
-            note_content = user_cmd.split(":", 1)[1].strip()
-            st.session_state.notes.append(note_content)
-            st.success(f"📝 નવી નોટ સેવ થઈ ગઈ: **{note_content}**")
-            st.session_state.logs.append(f"નોટ ઉમેરી: {note_content}")
-
-        # 5. Google / YouTube સર્ચ લિંક ખોલવી
-        elif "youtube" in cmd:
-            st.markdown("🎬 **YouTube ખોલવા માટે નીચે ક્લિક કરો:**")
-            st.link_button("▶️ Open YouTube", "https://www.youtube.com")
-            st.session_state.logs.append("YouTube લિંક ઓપન કરી")
-            
-        elif cmd.startswith("search:") or "શોધો" in cmd:
-            query = user_cmd.split(":", 1)[1].strip() if ":" in user_cmd else user_cmd
-            encoded_q = urllib.parse.quote(query)
-            st.markdown(f"🔍 **'{query}' માટે Google સર્ચ તૈયાર છે:**")
-            st.link_button("🌐 Google પર જુઓ", f"https://www.google.com/search?q={encoded_q}")
-            st.session_state.logs.append(f"Google સર્ચ: {query}")
-
-        # 6. સ્માર્ટ કેલ્ક્યુલેટર (જો ગણિતનો દાખલો લખ્યો હોય તો)
-        elif any(op in cmd for op in ["+", "-", "*", "/"]):
+    cmd = st.text_input("💬 તમારો કમાન્ડ લખો (દા.ત. 'note: દૂધ લાવવું', '250 * 12'):")
+    if st.button("▶️ કમાન્ડ ચલાવો (Execute)"):
+        if cmd.lower().startswith("note:"):
+            note_text = cmd[5:].strip()
+            st.session_state.notes.append(note_text)
+            st.success(f"નોટ સેવ થઈ ગઈ: {note_text}")
+        elif any(op in cmd for op in ['+', '-', '*', '/']):
             try:
-                # સુરક્ષિત ગણતરી
-                allowed_chars = "0123456789+-*/.() "
-                if all(c in allowed_chars for c in cmd):
-                    ans = eval(cmd)
-                    st.success(f"🧮 જવાબ: **{cmd} = {ans}**")
-                    st.session_state.logs.append(f"ગણતરી: {cmd} = {ans}")
-                else:
-                    st.warning("કૃપા કરીને સાચા આંકડા લખો.")
+                ans = eval(cmd)
+                st.success(f"ગણતરીનો જવાબ: {ans}")
             except:
-                st.error("ગણતરી કરવામાં ભૂલ આવી.")
-
+                st.error("ગણતરીમાં ભૂલ છે.")
         else:
-            st.warning(f"🤖 કમાન્ડ મળ્યો: **'{user_cmd}'** — આ કમાન્ડ માટે તમે કસ્ટમ એક્શન સેટ કરી શકો છો!")
-            st.session_state.logs.append(f"કસ્ટમ કમાન્ડ: {user_cmd}")
-            
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.info(f"કમાન્ડ પ્રોસેસ થયો: {cmd}")
 
-# નીચે સેવ થયેલી નોટ્સ અને કમાન્ડ હિસ્ટ્રી બતાવવી
-col_a, col_b = st.columns(2)
-with col_a:
-    st.markdown("### 📝 તમારી સ્માર્ટ નોટ્સ")
     if st.session_state.notes:
+        st.markdown("### 📝 તમારી સ્માર્ટ નોટ્સ")
         for idx, n in enumerate(st.session_state.notes, 1):
             st.write(f"{idx}. {n}")
-    else:
-        st.caption("હજુ કોઈ નોટ નથી. 'note: તમારો મેસેજ' લખીને ઉમેરો.")
-
-with col_b:
-    st.markdown("### 📜 એક્શન હિસ્ટ્રી")
-    if st.session_state.logs:
-        for log in reversed(st.session_state.logs[-5:]):
-            st.caption(f"⚡ {log}")
-    else:
-        st.caption("હજુ કોઈ કમાન્ડ ચલાવ્યો નથી.")
