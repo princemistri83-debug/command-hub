@@ -71,7 +71,9 @@ if 'contacts' not in st.session_state:
         "મમ્મી / ઘર (+91 98765 00001)": "Erwin Smith",
         "બેસ્ટ ફ્રેન્ડ (+91 98765 00002)": "Floch Forster",
         "બિઝનેસ / ઓફિસ (+91 98765 00003)": "Johan Liebert",
-        "અજાણ્યો નંબર (+91 99999 88888)": "Eren Yeager"
+        "અજાણ્યો નંબર (+91 99999 88888)": "Eren Yeager",
+        "સિક્રેટ નંબર (+91 77777 66666)": "Ryuk",
+        "ખાસ વ્યક્તિ (+91 88888 55555)": "Mikasa Ackerman"
     }
 
 # ઓટોમેટિક બ્રાઉઝર વોઇસ (TTS) ફંક્શન
@@ -88,7 +90,7 @@ def speak_voice(text, pitch=1.0, rate=1.0):
     """
     components.html(js_code, height=0)
 
-# કેરેક્ટર ડેટાબેઝ
+# કેરેક્ટર ડેટાબેઝ (જૂના + નવા બધા કેરેક્ટર્સ)
 CHARACTERS = {
     "Erwin Smith": {
         "pitch": 0.75, "rate": 0.95,
@@ -149,6 +151,56 @@ CHARACTERS = {
             "Not bad. Now show me how you actually plan to pull this off."
         ],
         "quotes": ["Everyone's a slave to something.", "A real warrior needs no sword."]
+    },
+    "Ryuk": {
+        "pitch": 0.55, "rate": 0.90,
+        "greeting": "Hyuk hyuk hyuk! Humans are so interesting! Do you have any juicy apples for me?",
+        "replies": [
+            "Hyuk hyuk! You really think you can outsmart everyone? Keep entertaining me!",
+            "I'm just here to watch the show. Make sure you don't bore me, human.",
+            "The human world is way more fun than the Shinigami realm. What's your next move?"
+        ],
+        "quotes": ["Humans are so interesting!", "Apples from the human world are the best!"]
+    },
+    "Mikasa Ackerman": {
+        "pitch": 1.25, "rate": 0.95,
+        "greeting": "Are you safe? Tell me where you are right now, I will protect you.",
+        "replies": [
+            "This world is cruel, yet so beautiful. Stay strong, I am right beside you.",
+            "If you can't fight, you can't survive. Don't give up now.",
+            "Whatever happens, I will always stand by your side."
+        ],
+        "quotes": ["This world is cruel... and yet so beautiful.", "If I die, I can't even remember you."]
+    },
+    "Misa Amane": {
+        "pitch": 1.45, "rate": 1.15,
+        "greeting": "Hiii! Finally you called! Misa was waiting for you so long!",
+        "replies": [
+            "I would do anything for you! Just tell me what you need!",
+            "You're the smartest person ever! Let's show everyone what we can do!",
+            "Don't worry about a thing, Misa is always on your team!"
+        ],
+        "quotes": ["I can't imagine a world without you!", "Misa will always help you!"]
+    },
+    "Near": {
+        "pitch": 1.15, "rate": 0.88,
+        "greeting": "If you can't win the game, if you can't solve the puzzle, you're nothing but a loser. Let's analyze this.",
+        "replies": [
+            "Looking at the probabilities, there is only one logical conclusion here.",
+            "Don't let emotions cloud your judgment. Think carefully and place the right piece.",
+            "Everything is just a puzzle waiting to be solved. What is your deduction?"
+        ],
+        "quotes": ["If you can't solve the puzzle, you're just a loser.", "Nobody can tell what is right and what is wrong."]
+    },
+    "Zeke Yeager": {
+        "pitch": 0.70, "rate": 0.92,
+        "greeting": "Ah, there you are. You still haven't realized the true nature of this world, have you?",
+        "replies": [
+            "You shouldn't take things so seriously. Try to find a little joy in the game.",
+            "Sometimes, the most merciful choice is the hardest one to make.",
+            "I already have a plan for this. Just trust my strategy and follow through."
+        ],
+        "quotes": ["The key is to enjoy the little things in life.", "We must end this cycle once and for all."]
     }
 }
 
@@ -158,11 +210,19 @@ st.markdown("<p style='text-align:center; color:#94a3b8;'>એનિમે વો
 tab1, tab2, tab3 = st.tabs(["📞 Anime Voice Call", "📜 Anime Quote Vault", "📝 Smart Notes"])
 
 # ==========================================
-# TAB 1: ANIME VOICE CALL (AUTO SPEAK MODE)
+# TAB 1: ANIME VOICE CALL (VOICE-TO-VOICE MODE)
 # ==========================================
 with tab1:
-    st.subheader("📲 એનિમે કેરેક્ટર ઓટો-કોલ સિમ્યુલેટર")
+    st.subheader("📲 એનિમે કેરેક્ટર લાઈવ વોઇસ કોલ")
     
+    with st.expander("➕ નવો કોન્ટેક્ટ નંબર ઉમેરો / બદલો"):
+        new_name_num = st.text_input("કોન્ટેક્ટ નામ અને નંબર (દા.ત. રાજ +91 9825012345):")
+        assigned_char = st.selectbox("આ નંબર માટે કયું કેરેક્ટર સેટ કરવું છે?", list(CHARACTERS.keys()), key="new_assign")
+        if st.button("કોન્ટેક્ટ સેવ કરો"):
+            if new_name_num:
+                st.session_state.contacts[new_name_num] = assigned_char
+                st.success(f"સેવ થઈ ગયું: {new_name_num} -> {assigned_char}")
+
     selected_contact = st.selectbox("કોનો કોલ આવી રહ્યો છે / કોને કોલ કરવો છે?", list(st.session_state.contacts.keys()))
     default_char = st.session_state.contacts[selected_contact]
     
@@ -188,8 +248,50 @@ with tab1:
             st.info("કોલ ડિસ્કનેક્ટ થયો.")
 
     st.markdown("---")
-    
-    user_speech = st.text_input("🎙️ તમે કોલમાં જે લખશો તે સામે કેરેક્ટર ઓટોમેટિક બોલશે (ટાઇપ કરીને એન્ટર દબાવો):", key="user_input_box")
+    st.markdown("🎙️ **માઇક્રોફોન વોઇસ સ્પીક (Speech-to-Text):** નીચે આપેલું બટન દબાવો અને તમારા ફોનમાં બોલો:")
+
+    mic_html = f"""
+    <div style="text-align: center; margin: 10px 0;">
+        <button onclick="startListening()" style="background-color: #0284c7; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;">
+            🎙️ બોલવાનું શરૂ કરો (Tap & Speak)
+        </button>
+        <p id="status" style="color: #38bdf8; margin-top: 8px; font-size: 14px;"></p>
+    </div>
+    <script>
+        function startListening() {{
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {{
+                alert("તમારું બ્રાઉઝર સ્પીચ રેકગ્નિશન સપોર્ટ કરતું નથી. કૃપા કરીને Google Chrome વાપરો.");
+                return;
+            }}
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            
+            document.getElementById("status").innerText = "સંભળાઈ રહ્યું છે... બોલો!";
+            
+            recognition.onresult = function(event) {{
+                const speechToText = event.results[0][0].transcript;
+                document.getElementById("status").innerText = "તમે બોલ્યા: " + speechToText;
+                const inputBox = window.parent.document.querySelector("input[aria-label*='Voice']");
+                if (inputBox) {{
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                    nativeInputValueSetter.call(inputBox, speechToText);
+                    inputBox.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                }}
+            }};
+            
+            recognition.onerror = function(event) {{
+                document.getElementById("status").innerText = "ભૂલ આવી: " + event.error;
+            }};
+            
+            recognition.start();
+        }}
+    </script>
+    """
+    components.html(mic_html, height=100)
+
+    user_speech = st.text_input("🎙️ વૉઇસ ઇનપુટ ટેક્સ્ટ (માઈકથી બોલશો એટલે અહીં ઓટોમેટિક લખાશે):", key="voice_input_box")
 
     if user_speech:
         last_msg = st.session_state.call_history[-1][2] if st.session_state.call_history else ""
