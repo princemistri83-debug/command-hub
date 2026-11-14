@@ -76,7 +76,7 @@ if 'contacts' not in st.session_state:
         "ખાસ વ્યક્તિ (+91 88888 55555)": "Mikasa Ackerman"
     }
 
-# ઓટોમેટિક બ્રાઉઝર વોઇસ (TTS) ફંક્શન
+# ઓટોમેટિક બ્રાઉઝર વોઇး (TTS) ફંક્શન
 def speak_voice(text, pitch=1.0, rate=1.0):
     clean_text = text.replace('"', '').replace("'", "")
     js_code = f"""
@@ -90,7 +90,7 @@ def speak_voice(text, pitch=1.0, rate=1.0):
     """
     components.html(js_code, height=0)
 
-# કેરેક્ટર ડેટાબેઝ (જૂના + નવા બધા કેરેક્ટર્સ)
+# કેરેક્ટર ડેટાબેઝ
 CHARACTERS = {
     "Erwin Smith": {
         "pitch": 0.75, "rate": 0.95,
@@ -210,7 +210,7 @@ st.markdown("<p style='text-align:center; color:#94a3b8;'>એનિમે વો
 tab1, tab2, tab3 = st.tabs(["📞 Anime Voice Call", "📜 Anime Quote Vault", "📝 Smart Notes"])
 
 # ==========================================
-# TAB 1: ANIME VOICE CALL (VOICE-TO-VOICE MODE)
+# TAB 1: ANIME VOICE CALL
 # ==========================================
 with tab1:
     st.subheader("📲 એનિમે કેરેક્ટર લાઈવ વોઇસ કોલ")
@@ -273,11 +273,22 @@ with tab1:
             recognition.onresult = function(event) {{
                 const speechToText = event.results[0][0].transcript;
                 document.getElementById("status").innerText = "તમે બોલ્યા: " + speechToText;
+                
                 const inputBox = window.parent.document.querySelector("input[aria-label*='Voice']");
                 if (inputBox) {{
                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
                     nativeInputValueSetter.call(inputBox, speechToText);
                     inputBox.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    
+                    setTimeout(() => {{
+                        const enterEvent = new KeyboardEvent('keydown', {{
+                            key: 'Enter',
+                            code: 'Enter',
+                            keyCode: 13,
+                            bubbles: true
+                        }});
+                        inputBox.dispatchEvent(enterEvent);
+                    }}, 400);
                 }}
             }};
             
@@ -289,7 +300,7 @@ with tab1:
         }}
     </script>
     """
-    components.html(mic_html, height=100)
+    components.html(mic_html, height=120)
 
     user_speech = st.text_input("🎙️ વૉઇસ ઇનપુટ ટેક્સ્ટ (માઈકથી બોલશો એટલે અહીં ઓટોમેટિક લખાશે):", key="voice_input_box")
 
